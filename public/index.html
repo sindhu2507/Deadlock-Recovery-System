@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Deadlock Detector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    button {
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #result, #cycle, #recovery {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Deadlock Detection System</h1>
+    <form id="uploadForm">
+      <input type="file" id="fileInput" name="file" accept=".txt" required />
+      <button type="submit">Check for Deadlock</button>
+    </form>
+    <div id="result">Result will appear here</div>
+    <div id="cycle"></div>
+    <div id="recovery"></div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("uploadForm");
+      const fileInput = document.getElementById("fileInput");
+      const resultDiv = document.getElementById("result");
+      const cycleDiv = document.getElementById("cycle");
+      const recoveryDiv = document.getElementById("recovery");
+
+      if (!form) {
+        console.error("Form with ID 'uploadForm' not found");
+        return;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (!fileInput.files.length) {
+          resultDiv.textContent = "Please upload a file.";
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        resultDiv.textContent = "Processing...";
+
+        try {
+          const response = await fetch("/check-deadlock", {
+            method: "POST",
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log("Response data:", data);
+
+          resultDiv.textContent = data.deadlockDetected
+            ? "🔴 Deadlock Detected!"
+            : "🟢 No Deadlock Detected.";
+
+          cycleDiv.textContent = data.cycle && data.cycle.length > 0
+            ? `Deadlock Cycle: ${data.cycle.join(" → ")}`
+            : "";
+
+          recoveryDiv.innerHTML = data.recoverySteps && data.recoverySteps.length > 0
+            ? "<h3>Recovery Steps:</h3><ul>" + 
+              data.recoverySteps.map(step => `<li><strong>${step.action}:</strong> ${step.detail}</li>`).join("") + 
+              "</ul>"
+            : "";
+        } catch (err) {
+          console.error("Fetch error:", err);
+          resultDiv.textContent = `❌ Error: ${err.message}`;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
